@@ -120,7 +120,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   defaultInput: {
-    padding: 20,
+    padding: 8,
     borderWidth: 1,
     height: 40,
     borderColor: '#eaeaea',

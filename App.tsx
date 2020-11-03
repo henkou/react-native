@@ -25,14 +25,25 @@ const App = () => {
     <NavigationContainer>
       {isLoggedIn ? (
         <MainStack.Navigator>
-          <MainStack.Screen name="Main">
+          <MainStack.Screen
+            name="Main"
+            options={{
+              headerShown: false,
+            }}
+          >
             {(props) => <MainScreen logout={logout} {...props} />}
           </MainStack.Screen>
         </MainStack.Navigator>
       ) : (
         <AuthStack.Navigator>
-          <AuthStack.Screen name="Login">
-            {(props) => <LoginScreen login={login} {...props} />}
+          <AuthStack.Screen
+            name="Login"
+            // 뒤로 가기 필요 없을 때 사용 login 삭제
+            options={{
+              headerShown: false,
+            }}
+          >
+            {(props) => <MainScreen logout={logout} {...props} />}
           </AuthStack.Screen>
         </AuthStack.Navigator>
       )}
