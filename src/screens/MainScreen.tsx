@@ -16,7 +16,7 @@ import ja from 'dayjs/locale/ja'
 import EmptyTodoList from '../components/EmptyTodoList'
 import TodoCard from '../components/TodoCard'
 import axios from 'axios'
-
+import LoadingComponent from '../components/LoadingComponent'
 dayjs.extend(relativeTime)
 dayjs.locale(ja)
 
@@ -28,13 +28,17 @@ export interface ITodo {
   id: string
   body: string
   completed: boolean
-  createdAt: string
-  updateAt: string
+  createdAt: Date
+  updateAt: Date
 }
 
 const MainScreen: FunctionComponent<Props> = ({ logout }) => {
   const [todoList, setTodoList] = React.useState<ITodo[]>([] as ITodo[])
   const [body, setBody] = React.useState('')
+  const [getListLoading, setGetListLoading] = React.useState(false)
+  const [addLoading, setAddLoading] = React.useState(false)
+  const [editLoading, setEditLoading] = React.useState(false)
+  const [deleteLoading, setDeleteLoading] = React.useState(false)
 
   const handleChangeBody = (value: string) => {
     setBody(value)
@@ -51,7 +55,8 @@ const MainScreen: FunctionComponent<Props> = ({ logout }) => {
           body,
         }
       )
-      setTodoList([...todoList, response.data.result])
+      setAddLoading(false)
+      setTodoList([response.data.result, ...todoList])
       setBody('')
     } catch (e) {
       console.log(e)
@@ -73,21 +78,70 @@ const MainScreen: FunctionComponent<Props> = ({ logout }) => {
         }
       )
       const newTodoList = todoList.map((todo) =>
+        //todo.id === id ? response.data.result : todo
         todo.id === id ? response.data.result : todo
       )
       setTodoList(newTodoList)
+      setEditLoading(false)
     } catch (e) {
       console.log(e)
     }
   }
 
+  const editTodo = async ({
+    id,
+    body,
+    completed,
+  }: {
+    id: string
+    body: string
+    completed: boolean
+  }) => {
+    setEditLoading(true)
+    try {
+      const response = await axios.patch(
+        `https://tamastudy-todo-api.herokuapp.com/api/todo/${id}`,
+        {
+          body,
+          completed,
+        }
+      )
+      const newTodoList = todoList.map((todo: ITodo) =>
+        todo.id === id ? response.data.result : todo
+      )
+      setTodoList(newTodoList)
+      setEditLoading(false)
+    } catch (e) {
+      setEditLoading(false)
+      console.log(e)
+    }
+  }
+
+  const onClickDeleteButton = (id: string) => async () => {
+    setDeleteLoading(true)
+    try {
+      const response = await axios.delete(
+        `https://tamastudy-todo-api.herokuapp.com/api/todo/${id}`
+      )
+      const newTodoList = todoList.filter((todo: ITodo) => todo.id !== id)
+      setTodoList(newTodoList)
+      setDeleteLoading(false)
+    } catch (e) {
+      setDeleteLoading(false)
+      console.log(e)
+    }
+  }
+
   const getTodoList = async () => {
+    setGetListLoading(true)
     try {
       const response = await axios.get(
         `https://tamastudy-todo-api.herokuapp.com/api/todo`
       )
       setTodoList(response.data.result)
+      setGetListLoading(false)
     } catch (e) {
+      setGetListLoading(false)
       console.log(e)
     }
   }
@@ -97,30 +151,23 @@ const MainScreen: FunctionComponent<Props> = ({ logout }) => {
   }, [])
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: '#606060' }}>
-      <View style={styles.form}>
+    <SafeAreaView style={styles.wrapper}>
+      <View style={styles.addForm}>
         <TextInput
-          style={[styles.defaultInput]}
+          placeholder={'할 일을 입력해주세요. '}
           value={body}
           onChangeText={handleChangeBody}
-          placeholder={'할 일을 입력해주세요.'}
-          autoCapitalize={'none'}
           autoCorrect={false}
+          autoCapitalize={'none'}
+          style={[styles.defaultInput, styles.contentInput]}
         />
-        <TouchableOpacity
-          style={{
-            position: 'absolute',
-            right: 20,
-            top: '50%',
-            transform: [{ translateY: -16 }],
-            backgroundColor: '#606060',
-          }}
-          onPress={addTodo}
-        >
-          <Text style={{ padding: 8, color: 'white' }}>Add</Text>
+        <TouchableOpacity style={styles.addButton} onPress={addTodo}>
+          <Text style={styles.addText}>
+            {addLoading ? <LoadingComponent color={'#FFF'} /> : 'Add'}
+          </Text>
         </TouchableOpacity>
       </View>
-      <View style={styles.todoList}>
+      <View style={styles.content}>
         <FlatList
           data={todoList}
           keyExtractor={({ id }) => String(id)}
@@ -131,6 +178,10 @@ const MainScreen: FunctionComponent<Props> = ({ logout }) => {
               content={item.body}
               createdAt={item.createdAt}
               onClickCompleteTodo={onClickCompleteTodo}
+              editTodo={editTodo}
+              editLoading={editLoading}
+              deleteLoading={deleteLoading}
+              onClickDeleteButton={onClickDeleteButton}
             />
           )}
           ListEmptyComponent={() => <EmptyTodoList />}
@@ -141,23 +192,34 @@ const MainScreen: FunctionComponent<Props> = ({ logout }) => {
 }
 
 const styles = StyleSheet.create({
-  form: {
-    marginTop: 40,
-    padding: 0,
-    backgroundColor: 'blue',
-    position: 'relative',
-  },
+  wrapper: { flex: 1, backgroundColor: '#606060' },
   defaultInput: {
-    backgroundColor: 'white',
-    height: 40,
-    borderColor: 'black',
-    padding: 10,
-    paddingLeft: 30,
-    color: 'black',
+    backgroundColor: '#fff',
+    borderColor: '#eaeaea',
+    borderWidth: 1,
     fontSize: 20,
+    color: '#000',
+    padding: 16,
+    height: 100,
   },
-  todoList: {
-    padding: 8,
+  contentInput: {
+    flex: 1,
+    marginRight: 'auto',
   },
+  addForm: {
+    marginTop: Platform.OS === 'android' ? 30 : 0,
+    flexDirection: 'row',
+    height: 100,
+  },
+  addButton: {
+    backgroundColor: 'green',
+    justifyContent: 'center',
+    padding: 32,
+  },
+  addText: {
+    color: 'white',
+  },
+  content: { marginBottom: 64 },
 })
+
 export default MainScreen
